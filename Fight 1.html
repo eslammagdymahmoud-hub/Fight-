@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SWOT Fighters: Corporate Brawl</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Segoe+UI:wght@700&display=swap');
+        
+        body {
+            margin: 0;
+            background-color: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            color: white;
+            user-select: none;
+            overflow: hidden;
+        }
+        h1 { 
+            margin: 15px 0; 
+            color: #f1c40f; 
+            font-family: 'Press Start 2P', cursive; 
+            font-size: 24px;
+            text-shadow: 2px 2px #e74c3c;
+        }
+        
+        .game-wrapper {
+            position: relative;
+            display: inline-block;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+            border-radius: 8px;
+        }
+        canvas {
+            background: linear-gradient(to bottom, #2c3e50, #000000);
+            border: 4px solid #f1c40f;
+            border-radius: 8px;
+            display: block;
+        }
+
+        /* --- Start Screen --- */
+        .start-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(26, 26, 46, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 30;
+            border-radius: 8px;
+        }
+        .setup-container {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+        .player-setup {
+            background: #16213e;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid;
+            width: 250px;
+        }
+        .p1-setup { border-color: #e74c3c; box-shadow: 0 0 15px #e74c3c; }
+        .p2-setup { border-color: #3498db; box-shadow: 0 0 15px #3498db; }
+        .player-setup h2 { margin-top: 0; font-family: 'Press Start 2P', cursive; font-size: 16px; }
+        .p1-setup h2 { color: #e74c3c; }
+        .p2-setup h2 { color: #3498db; }
+        .player-setup input {
+            width: 90%; padding: 10px; font-size: 18px;
+            margin-bottom: 20px; border-radius: 6px; border: none;
+            text-align: center; font-weight: bold;
+        }
+        .controls-desc { font-size: 15px; color: #bdc3c7; line-height: 1.8; text-align: left; background: #0f172a; padding: 15px; border-radius: 8px;}
+        .controls-desc span { color: #f1c40f; font-weight: bold; }
+        .start-btn {
+            font-family: 'Press Start 2P', cursive;
+            padding: 20px 40px; font-size: 20px;
+            background: #f1c40f; color: #1a1a2e;
+            border: none; border-radius: 8px; cursor: pointer;
+            transition: 0.3s;
+        }
+        .start-btn:hover { background: #f39c12; transform: scale(1.05); }
+
+        /* --- UI Layer --- */
+        .ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%;
+            padding: 20px 30px; box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            display: none; /* Hidden until start */
+        }
+        .player-info { display: flex; flex-direction: column; }
+        .player-name { font-size: 28px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; text-shadow: 2px 2px black; }
+        .p1-name-display { color: #e74c3c; }
+        .p2-name-display { color: #3498db; text-align: right; }
+        .hearts { font-size: 30px; letter-spacing: 5px; }
+
+        /* --- Question Modal --- */
+        .modal-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            border-radius: 8px;
+        }
+        .question-box {
+            background: #ecf0f1; color: #2c3e50;
+            padding: 30px; border-radius: 12px;
+            width: 80%; max-width: 650px; text-align: center;
+            box-shadow: 0 0 25px #f1c40f;
+        }
+        .turn-indicator {
+            font-size: 22px; font-weight: bold; margin-bottom: 15px;
+            padding: 10px 20px; border-radius: 8px; display: inline-block;
+        }
+        .turn-p1 { background: #e74c3c; color: white; }
+        .turn-p2 { background: #3498db; color: white; }
+        .question-text { font-size: 22px; font-weight: bold; margin-bottom: 25px; line-height: 1.4; }
+        .options-grid { display: flex; flex-direction: column; gap: 12px; }
+        .option-btn {
+            background: #2c3e50; color: white; border: none; padding: 15px;
+            font-size: 18px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-weight: bold;
+        }
+        .option-btn:hover { background: #1a252f; transform: scale(1.02); box-shadow: 0 5px 15px rgba(0,0,0,0.3);}
+        
+        /* --- Winner Screen --- */
+        .winner-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); display: none; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 20; border-radius: 8px;
+        }
+        .winner-text { font-family: 'Press Start 2P', cursive; font-size: 35px; color: #f1c40f; margin-bottom: 40px; text-align: center; line-height: 1.5; }
+        .restart-btn {
+            padding: 15px 30px; font-size: 20px; font-weight: bold; font-family: 'Press Start 2P', cursive;
+            background: #27ae60; color: white; border: none; border-radius: 8px; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>SWOT Fighters</h1>
+    
+    <div class="game-wrapper">
+        
+        <!-- Start Screen -->
+        <div class="start-screen" id="startScreen">
+            <div class="setup-container">
+                <div class="player-setup p1-setup">
+                    <h2>PLAYER 1 🥷</h2>
+                    <input type="text" id="p1Input" placeholder="Name..." maxlength="12" value="Ninja">
+                    <div class="controls-desc">
+                        <span>W</span> - Jump<br>
+                        <span>A</span> - Left<br>
+                        <span>D</span> - Right<br>
+                        <span>SPACE</span> - Attack 🗡️
+                    </div>
+                </div>
+                <div class="player-setup p2-setup">
+                    <h2>PLAYER 2 🤖</h2>
+                    <input type="text" id="p2Input" placeholder="Name..." maxlength="12" value="Cyborg">
+                    <div class="controls-desc">
+                        <span>⬆️</span> - Jump<br>
+                        <span>⬅️</span> - Left<br>
+                        <span>➡️</span> - Right<br>
+                        <span>ENTER</span> - Attack ⚡
+                    </div>
+                </div>
+            </div>
+            <button class="start-btn" onclick="startGame()">FIGHT!</button>
+        </div>
+
+        <canvas id="gameCanvas" width="1024" height="576"></canvas>
+        
+        <div class="ui-layer" id="uiLayer">
+            <div class="player-info">
+                <div class="player-name p1-name-display" id="p1NameDisplay">P1</div>
+                <div class="hearts" id="p1-hearts">❤️❤️❤️</div>
+            </div>
+            <div class="player-info">
+                <div class="player-name p2-name-display" id="p2NameDisplay">P2</div>
+                <div class="hearts" id="p2-hearts">❤️❤️❤️</div>
+            </div>
+        </div>
+
+        <div class="modal-overlay" id="questionModal">
+            <div class="question-box">
+                <div class="turn-indicator" id="turnIndicator">Player Turn</div>
+                <div class="question-text" id="qText">Question</div>
+                <div class="options-grid" id="optionsGrid"></div>
+            </div>
+        </div>
+
+        <div class="winner-screen" id="winnerScreen">
+            <div class="winner-text" id="winnerText">WINS!</div>
+            <button class="restart-btn" onclick="location.reload()">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const c = canvas.getContext('2d');
+        const p1Hearts = document.getElementById('p1-hearts');
+        const p2Hearts = document.getElementById('p2-hearts');
+
+        const gravity = 0.7;
+        let gameActive = false;
+        let gamePaused = false;
+        let gameOver = false;
+        
+        let p1Name = "Ninja";
+        let p2Name = "Cyborg";
+
+        // Questions from SWOT Lesson
+        const questions = [
+            { q: "What is a strategic framework evaluating internal Strengths and Weaknesses alongside external Opportunities and Threats?", opts: ["Situational Analysis", "SWOT Analysis", "Mission Statement"], ans: 1 },
+            { q: "Which of the following is considered an internal environmental factor that is easier to control?", opts: ["Employee morale", "Economic downturns", "Stringent government regulations"], ans: 0 },
+            { q: "What does USP stand for in establishing a sustainable competitive advantage?", opts: ["Universal Strategic Plan", "Untapped Sales Potential", "Unique Selling Proposition"], ans: 2 },
+            { q: "Which of the following is considered an external Threat (Harmful)?", opts: ["Aggressive price wars", "High employee turnover", "Outdated logistics"], ans: 0 },
+            { q: "How can a company move away from destructive price-cutting wars into customer value leadership?", opts: ["By expanding into new cities", "By lowering trade tariffs", "By anchoring its strategy to its USP"], ans: 2 },
+            { q: "What is the comprehensive assessment of a firm's present operational environment and capabilities?", opts: ["Situational Analysis", "Environmental Scanning", "Mission Statement"], ans: 0 },
+            { q: "What is a formal declaration explaining an organization's core purpose and strategic focus?", opts: ["Strategic Plan", "SWOT Analysis", "Mission Statement"], ans: 2 },
+            { q: "Which of the following is an example of an external Opportunity (Helpful)?", opts: ["Robust capital reserves", "Untapped emerging markets", "Dedicated workforce talent"], ans: 1 },
+            { q: "What process involves the collection and interpretation of environmental conditions like the economy?", opts: ["Environmental scanning", "Internal Audit", "Capital Resources Analysis"], ans: 0 },
+            { q: "Why might stronger organizations be exposed to a greater level of threats?", opts: ["They have high employee turnover", "Success breeds envy and competition", "They ignore their internal weaknesses"], ans: 1 }
+        ];
+
+        // --- Classes ---
+        class Fighter {
+            constructor({ position, color, icon, attackIcon, offset }) {
+                this.position = position;
+                this.velocity = { x: 0, y: 0 };
+                this.width = 80;
+                this.height = 80;
+                this.color = color;
+                this.icon = icon;
+                this.attackIcon = attackIcon;
+                this.health = 3;
+                this.isAttacking = false;
+                this.attackBox = {
+                    position: { x: this.position.x, y: this.position.y },
+                    offset: offset,
+                    width: 100,
+                    height: 50
+                };
+                this.lastKey = '';
+                this.isDead = false;
+                this.invulnerable = false;
+                this.opacity = 1;
+            }
+
+            draw() {
+                c.save();
+                c.globalAlpha = this.opacity;
+                
+                // Draw Character Emoji
+                c.font = '80px Arial';
+                c.textAlign = 'left';
+                c.textBaseline = 'top';
+                c.fillText(this.icon, this.position.x, this.position.y);
+
+                // Draw Attack
+                if (this.isAttacking) {
+                    c.font = '60px Arial';
+                    c.fillText(this.attackIcon, this.attackBox.position.x, this.attackBox.position.y);
+                }
+                c.restore();
+            }
+
+            update() {
+                this.draw();
+                if (this.isDead) return;
+
+                // Attack box follows player
+                this.attackBox.position.x = this.position.x + this.attackBox.offset.x;
+                this.attackBox.position.y = this.position.y + 10;
+
+                this.position.x += this.velocity.x;
+                this.position.y += this.velocity.y;
+
+                // Gravity & Floor
+                if (this.position.y + this.height + this.velocity.y >= canvas.height - 70) {
+                    this.velocity.y = 0;
+                    this.position.y = canvas.height - 70 - this.height;
+                } else {
+                    this.velocity.y += gravity;
+                }
+
+                // Walls
+                if(this.position.x < 0) this.position.x = 0;
+                if(this.position.x + this.width > canvas.width) this.position.x = canvas.width - this.width;
+            }
+
+            attack() {
+                if(this.isAttacking) return;
+                this.isAttacking = true;
+                setTimeout(() => { this.isAttacking = false; }, 200);
+            }
+
+            takeDamage() {
+                if(this.invulnerable) return;
+                this.health -= 1;
+                updateHealthUI();
+                
+                if (this.health <= 0) {
+                    this.isDead = true;
+                    endGame(this === player1 ? `${p2Name} WINS!` : `${p1Name} WINS!`);
+                } else {
+                    this.invulnerable = true;
+                    let flashCount = 0;
+                    let blink = setInterval(() => {
+                        this.opacity = flashCount % 2 === 0 ? 0.3 : 1;
+                        flashCount++;
+                    }, 150);
+                    setTimeout(() => {
+                        clearInterval(blink);
+                        this.opacity = 1;
+                        this.invulnerable = false;
+                    }, 1200);
+                }
+            }
+        }
+
+        const player1 = new Fighter({
+            position: { x: 150, y: 100 },
+            color: '#e74c3c',
+            icon: '🥷', attackIcon: '🗡️',
+            offset: { x: 60, y: 0 }
+        });
+
+        const player2 = new Fighter({
+            position: { x: 800, y: 100 },
+            color: '#3498db',
+            icon: '🤖', attackIcon: '⚡',
+            offset: { x: -60, y: 0 }
+        });
+
+        const keys = {
+            a: { pressed: false }, d: { pressed: false },
+            ArrowLeft: { pressed: false }, ArrowRight: { pressed: false }
+        };
+
+        // --- Question Mechanics ---
+        let targetPlayer = 1; 
+        let questionState = 'NORMAL';
+        let currentQIndex = 0;
+        let lastQuestionTime = Date.now();
+        const QUESTION_INTERVAL = 15000; // 15s
+
+        // Power-up animation state
+        let powerUpDrop = { active: false, x: 0, y: 0, targetY: 0, targetPlayerObj: null };
+
+        function startGame() {
+            const p1Input = document.getElementById('p1Input').value.trim();
+            const p2Input = document.getElementById('p2Input').value.trim();
+            if(p1Input) p1Name = p1Input;
+            if(p2Input) p2Name = p2Input;
+
+            document.getElementById('p1NameDisplay').innerText = p1Name;
+            document.getElementById('p2NameDisplay').innerText = p2Name;
+            
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('uiLayer').style.display = 'flex';
+            
+            gameActive = true;
+            lastQuestionTime = Date.now();
+            animate();
+        }
+
+        function updateHealthUI() {
+            p1Hearts.innerText = '❤️'.repeat(player1.health) + '🖤'.repeat(3 - player1.health);
+            p2Hearts.innerText = '❤️'.repeat(player2.health) + '🖤'.repeat(3 - player2.health);
+        }
+
+        function triggerQuestion() {
+            if (gameOver || player1.health <= 0 || player2.health <= 0) return;
+            gamePaused = true;
+            questionState = 'NORMAL';
+            
+            currentQIndex = Math.floor(Math.random() * questions.length);
+            showQuestionUI(questions[currentQIndex]);
+        }
+
+        function showQuestionUI(q) {
+            const modal = document.getElementById('questionModal');
+            const indicator = document.getElementById('turnIndicator');
+            const qText = document.getElementById('qText');
+            const optsGrid = document.getElementById('optionsGrid');
+            
+            modal.style.display = 'flex';
+            qText.innerText = q.q;
+            optsGrid.innerHTML = '';
+
+            const pName = targetPlayer === 1 ? p1Name : p2Name;
+            if (questionState === 'NORMAL') {
+                indicator.className = `turn-indicator turn-p${targetPlayer}`;
+                indicator.innerText = `Power-Up: ${pName}'s Turn (+1 Life if correct)`;
+            } else {
+                const stealerId = targetPlayer === 1 ? 2 : 1;
+                const stealerName = stealerId === 1 ? p1Name : p2Name;
+                indicator.className = `turn-indicator turn-p${stealerId}`;
+                indicator.innerText = `STEAL! Wrong answer. ${stealerName}'s Turn!`;
+            }
+
+            let opts = q.opts.map((opt, i) => ({ text: opt, isAns: i === q.ans }));
+            opts.sort(() => Math.random() - 0.5);
+
+            opts.forEach(opt => {
+                let btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerText = opt.text;
+                btn.onclick = () => handleAnswer(opt.isAns);
+                optsGrid.appendChild(btn);
+            });
+        }
+
+        function handleAnswer(isCorrect) {
+            const stealerId = targetPlayer === 1 ? 2 : 1;
+            const currentPlayerId = (questionState === 'NORMAL') ? targetPlayer : stealerId;
+            const currentPlayerObj = currentPlayerId === 1 ? player1 : player2;
+
+            if (isCorrect) {
+                document.getElementById('questionModal').style.display = 'none';
+                // Trigger Health Drop Animation instead of instant resume
+                startPowerUpAnimation(currentPlayerObj);
+            } else {
+                if (questionState === 'NORMAL') {
+                    questionState = 'STEAL';
+                    showQuestionUI(questions[currentQIndex]);
+                } else {
+                    document.getElementById('questionModal').style.display = 'none';
+                    resumeGame();
+                }
+            }
+        }
+
+        function startPowerUpAnimation(playerObj) {
+            powerUpDrop = {
+                active: true,
+                x: playerObj.position.x,
+                y: -50,
+                targetY: playerObj.position.y,
+                targetPlayerObj: playerObj
+            };
+        }
+
+        function resumeGame() {
+            targetPlayer = targetPlayer === 1 ? 2 : 1; 
+            lastQuestionTime = Date.now();
+            
+            keys.a.pressed = false; keys.d.pressed = false;
+            keys.ArrowLeft.pressed = false; keys.ArrowRight.pressed = false;
+            player1.velocity.x = 0; player2.velocity.x = 0;
+
+            gamePaused = false;
+        }
+
+        function endGame(winnerText) {
+            gameOver = true;
+            document.getElementById('winnerText').innerText = winnerText;
+            document.getElementById('winnerScreen').style.display = 'flex';
+        }
+
+        function rectangularCollision({ r1, r2 }) {
+            return (
+                r1.attackBox.position.x + r1.attackBox.width >= r2.position.x &&
+                r1.attackBox.position.x <= r2.position.x + r2.width &&
+                r1.attackBox.position.y + r1.attackBox.height >= r2.position.y &&
+                r1.attackBox.position.y <= r2.position.y + r2.height
+            );
+        }
+
+        // --- Game Loop ---
+        function animate() {
+            if (!gameActive || gameOver) return;
+            window.requestAnimationFrame(animate);
+
+            // Draw Background
+            c.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw Floor Grid/Stage
+            c.fillStyle = '#1e293b';
+            c.fillRect(0, canvas.height - 70, canvas.width, 70);
+            c.strokeStyle = '#f1c40f';
+            c.lineWidth = 4;
+            c.beginPath();
+            c.moveTo(0, canvas.height - 70);
+            c.lineTo(canvas.width, canvas.height - 70);
+            c.stroke();
+
+            player1.update();
+            player2.update();
+
+            // Handle Power-Up Drop Animation (While game is 'paused')
+            if (powerUpDrop.active) {
+                c.font = '50px Arial';
+                c.fillText('💖', powerUpDrop.x + 15, powerUpDrop.y);
+                powerUpDrop.y += 8; // Drop speed
+
+                if (powerUpDrop.y >= powerUpDrop.targetY) {
+                    powerUpDrop.active = false;
+                    powerUpDrop.targetPlayerObj.health = Math.min(3, powerUpDrop.targetPlayerObj.health + 1);
+                    updateHealthUI();
+                    resumeGame();
+                }
+                return; // Skip movement processing while dropping
+            }
+
+            if (gamePaused) return; // Skip movement if strictly paused
+
+            // P1 Move
+            player1.velocity.x = 0;
+            if (keys.a.pressed && player1.lastKey === 'a') {
+                player1.velocity.x = -7;
+                player1.attackBox.offset.x = -60;
+            } else if (keys.d.pressed && player1.lastKey === 'd') {
+                player1.velocity.x = 7;
+                player1.attackBox.offset.x = 60;
+            }
+
+            // P2 Move
+            player2.velocity.x = 0;
+            if (keys.ArrowLeft.pressed && player2.lastKey === 'ArrowLeft') {
+                player2.velocity.x = -7;
+                player2.attackBox.offset.x = -60;
+            } else if (keys.ArrowRight.pressed && player2.lastKey === 'ArrowRight') {
+                player2.velocity.x = 7;
+                player2.attackBox.offset.x = 60;
+            }
+
+            // Hit Detection
+            if (player1.isAttacking && rectangularCollision({ r1: player1, r2: player2 })) {
+                player1.isAttacking = false; 
+                player2.takeDamage();
+            }
+            if (player2.isAttacking && rectangularCollision({ r1: player2, r2: player1 })) {
+                player2.isAttacking = false;
+                player1.takeDamage();
+            }
+
+            // Trigger Question Timer
+            if (Date.now() - lastQuestionTime > QUESTION_INTERVAL) {
+                triggerQuestion();
+            }
+        }
+
+        // --- Controls ---
+        window.addEventListener('keydown', (event) => {
+            if (!gameActive || gamePaused || gameOver) return;
+            switch (event.key) {
+                case 'd': keys.d.pressed = true; player1.lastKey = 'd'; break;
+                case 'a': keys.a.pressed = true; player1.lastKey = 'a'; break;
+                case 'w': if (player1.velocity.y === 0) player1.velocity.y = -16; break;
+                case ' ': player1.attack(); break;
+
+                case 'ArrowRight': keys.ArrowRight.pressed = true; player2.lastKey = 'ArrowRight'; break;
+                case 'ArrowLeft': keys.ArrowLeft.pressed = true; player2.lastKey = 'ArrowLeft'; break;
+                case 'ArrowUp': if (player2.velocity.y === 0) player2.velocity.y = -16; break;
+                case 'Enter': player2.attack(); break;
+            }
+        });
+
+        window.addEventListener('keyup', (event) => {
+            switch (event.key) {
+                case 'd': keys.d.pressed = false; break;
+                case 'a': keys.a.pressed = false; break;
+                case 'ArrowRight': keys.ArrowRight.pressed = false; break;
+                case 'ArrowLeft': keys.ArrowLeft.pressed = false; break;
+            }
+        });
+
+    </script>
+</body>
+</html>
